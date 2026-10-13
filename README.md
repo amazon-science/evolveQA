@@ -1,18 +1,112 @@
-## My Project
+# evolveQA
 
-TODO: Fill this README out!
+This repository contains the evolveQA dataset as described in the following paper.
 
-Be sure to:
+> When Facts Change: Probing LLMs on Evolving Knowledge with evolveQA
+> Nishanth Sridhar Nakshatri, Shamik Roy, Manoj Ghuhan Arivazhagan, Hanhan Zhou, Vinayshekhar Bannihatti Kumar, Rashmi Gangadharaiah
+> AWS AI Labs
+> EMNLP 2026 (main)
 
-* Change the title in this README
-* Edit your repository description on GitHub
-* Write in your license below and create a LICENSE file
+The paper describes a novel mechanism for identifying evolving knowledge in unstructured corpus and constructing a Q&A test set to evaluate whether a language model answers questions using knowledge that was current at a specified point in time. This repository contains the resulting dataset (evolveQA). The public release contains six knowledge cutoff dates, making it suitable for testing a range of LLMs with varying cutoffs and training periods.
 
-## Security
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+## Release contents
+
+This release contains two complementary datasets:
+
+| Directory | Contents | Purpose |
+| --- | --- | --- |
+| `raw-public-data/` | Publicly available source documents and updates for AWS, Azure, and WHO Disease Outbreak News. | The input from which our framework automatically identified evolving knowledge. |
+| `evolveQA-benchmark/` | The resulting EvolveQA question-answering benchmark, organized by domain and knowledge cutoff. | The evaluation dataset for testing LLMs on the identified evolving knowledge. |
+
+In short, `raw-public-data/` is the raw source data, while `evolveQA-benchmark/` is the obtained benchmark derived from it. Users who want to inspect the underlying knowledge changes should start with the raw data; users who want to evaluate models should use the benchmark.
+
+## Domains
+
+The benchmark covers three domains in separate directories:
+
+| Directory | Domain | Questions |
+| --- | --- | ---: |
+| `evolveQA-benchmark/aws/` | AWS product and service updates | 2,960 |
+| `evolveQA-benchmark/azure/` | Azure product and service updates | 1,092 |
+| `evolveQA-benchmark/who/` | WHO Disease Outbreak News | 915 |
+
+There are 4,967 question records across the three domains. Counts include a record once per knowledge cutoff, so the same question identifier can occur in more than one cutoff file.
+
+## Knowledge cutoff dates
+
+Each domain provides one JSON file for each of the following six dates:
+
+1. August 31, 2023 (`qa_pairs_August_31_2023.json`)
+2. December 31, 2023 (`qa_pairs_December_31_2023.json`)
+3. April 30, 2024 (`qa_pairs_April_30_2024.json`)
+4. May 31, 2024 (`qa_pairs_May_31_2024.json`)
+5. July 31, 2024 (`qa_pairs_July_31_2024.json`)
+6. August 31, 2024 (`qa_pairs_August_31_2024.json`)
+
+For example, `evolveQA-benchmark/aws/qa_pairs_April_30_2024.json` should be used to test a model whose accessible knowledge is restricted to April 30, 2024 or earlier.
+
+## File format
+
+Every file is a JSON array. Each element is a question record with this schema:
+
+```json
+{
+  "question_id": "...",
+  "recent_answer_date": "MM/DD/YYYY",
+  "entity_name": "...",
+  "concept_name": "...",
+  "attribute_name": "...",
+  "different_qa_variants": {
+    "open_ended_qa": { "question": "...", "gold_answer": "..." },
+    "mcq_variant": {
+      "mcq_question": "...",
+      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+      "gold_answer_option": "..."
+    },
+    "verifiable_qa": { "yes": "...", "no": "..." }
+  }
+}
+```
+
+`recent_answer_date` is the date when the most recent information associated with the evolving knowledge surfaced. Dates use `MM/DD/YYYY` format.
+
+The `entity_name`, `concept_name`, and `attribute_name` fields provide the grounding for each question: the entity under discussion, its broader concept, and the specific changing attribute, respectively.
+
+`different_qa_variants` contains the available evaluation formats:
+
+- `open_ended_qa` provides a question and its gold answer.
+- `mcq_variant` provides a multiple-choice question, its options, and the correct option label.
+- `verifiable_qa` provides a statement-style question for which `yes` is the true formulation and `no` is the false formulation.
+
+## Loading a file
+
+```python
+import json
+from pathlib import Path
+
+path = Path("evolveQA-benchmark/aws/qa_pairs_April_30_2024.json")
+records = json.loads(path.read_text(encoding="utf-8"))
+
+for record in records:
+    question = record["different_qa_variants"]["open_ended_qa"]
+    print(record["entity_name"], question["question"], question["gold_answer"])
+```
+
 
 ## License
+- This dataset is released under the CC-BY-NC-ND-4.0 license.
+- This dataset is released solely for academic and scientific reproducibility purposes, in support of the methods and findings described in the associated publication.
+- Part of the dataset was generated by Claude (details in the paper); **DO NOT** use the dataset for model training.
 
-This library is licensed under the LICENSE NAME HERE License.
+## Citation
+If you find the data and/or approach helpful in your work, please cite the paper.
 
+```
+@article{nakshatri2025facts,
+  title={When Facts Change: Probing LLMs on Evolving Knowledge with evolveQA},
+  author={Nakshatri, Nishanth Sridhar and Roy, Shamik and Arivazhagan, Manoj Ghuhan and Zhou, Hanhan and Kumar, Vinayshekhar Bannihatti and Gangadharaiah, Rashmi},
+  journal={arXiv preprint arXiv:2510.19172},
+  year={2025}
+}
+```
